@@ -115,7 +115,7 @@ say "  还原/卸载：  ./mac/uninstall.sh     （或双击「一键卸载.comm
 say "  检查状态：  node mac/patch/patch-asar.js --check"
 say "────────────────────────────────────────────────"
 say ""
-say "开源仓库：https://github.com/landlessway/AntiGravity-2.0-zh"
+say "开源仓库：https://github.com/sptang2026/AntiGravity-2.0-zh"
 
 # 完成提示（系统通知）
 /usr/bin/osascript -e 'display notification "已生效：用原来的图标打开即是中文。更新用 ./mac/update.sh，还原用 ./mac/uninstall.sh" with title "AntiGravity 中文汉化 · 安装完成"' >/dev/null 2>&1 || true

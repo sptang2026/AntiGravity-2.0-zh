@@ -15,7 +15,7 @@ say "== 更新 AntiGravity 2.0 中文汉化 =="
 if [[ ! -d "$REPO_ROOT/.git" ]]; then
   say "❌ 当前目录不是 git 仓库（可能是下载的 zip 包），无法自动更新。"
   say "   请重新下载最新版后重新安装："
-  say "   https://github.com/landlessway/AntiGravity-2.0-zh"
+  say "   https://github.com/sptang2026/AntiGravity-2.0-zh"
   exit 1
 fi
 

@@ -78,7 +78,7 @@ chmod +x mac/install.sh
 ## 一行命令安装（可选）
 
 ```bash
-git clone https://github.com/landlessway/AntiGravity-2.0-zh.git \
+git clone https://github.com/sptang2026/AntiGravity-2.0-zh.git \
   && cd AntiGravity-2.0-zh \
   && chmod +x mac/install.sh 一键汉化.command 一键卸载.command \
   && ./mac/install.sh
@@ -88,7 +88,7 @@ git clone https://github.com/landlessway/AntiGravity-2.0-zh.git \
 
 把仓库地址和这句话发给你在用的 Agent：
 
-> 帮我安装 https://github.com/landlessway/AntiGravity-2.0-zh 这个 macOS 汉化工具：
+> 帮我安装 https://github.com/sptang2026/AntiGravity-2.0-zh 这个 macOS 汉化工具：
 > 把仓库 clone 下来，执行 `mac/install.sh`，完成后把结果告诉我。
 
 > ⚠️ **clone / 下载本身不会执行任何东西**。必须显式运行安装脚本才会生效——这是安全设计，不是缺陷。

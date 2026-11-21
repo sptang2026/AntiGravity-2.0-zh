@@ -22,7 +22,7 @@ uname -s
 ```bash
 # 建议克隆到用户主目录下的固定位置（不要放 /tmp，重启可能被清理）
 cd ~
-git clone https://github.com/landlessway/AntiGravity-2.0-zh.git
+git clone https://github.com/sptang2026/AntiGravity-2.0-zh.git
 cd AntiGravity-2.0-zh
 ```
 
