@@ -1,0 +1,6 @@
+.DS_Store
+*.bak-*
+mac/logs/*.log
+node_modules/
+PROJECT.md
+开始这里.md
