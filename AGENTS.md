@@ -45,10 +45,9 @@ chmod +x mac/install.sh mac/patch/*.sh mac/patch/*.js 2>/dev/null
 
 ## 3. 判断结果
 
-成功标志（满足任意一条）：
+成功标志：
 
 - 输出包含 `✅ 汉化服务已启动`
-- 且输出包含 `✅ 启动补丁已应用` **或** `✅ 已安排后台完成补丁`
 - 退出码为 `0`
 
 失败处理：把完整输出贴给用户，并说明卡在哪一步。
@@ -59,35 +58,31 @@ chmod +x mac/install.sh mac/patch/*.sh mac/patch/*.js 2>/dev/null
 （以下命令都在你克隆下来的仓库目录里执行）
 
 更新汉化：  ./mac/update.sh        （或双击「一键更新.command」）
-还原/卸载：  ./mac/uninstall.sh     （或双击「一键卸载.command」，会把 App 还原成原始文件）
-检查状态：  node mac/patch/patch-asar.js --check
+还原/卸载：  ./mac/uninstall.sh     （或双击「一键卸载.command」）
+检查状态：  launchctl list | grep zhpatch   （有输出 = 后台服务在运行）
 ```
 
 ---
 
-## 4. ⚠️ 如果 Antigravity 正在运行（重点）
+## 4. ⚠️ 安装后 App 会自动重启一次（重点，务必告知用户）
 
-脚本会**把自己脱壳到独立进程**，然后在约 10 秒内：
+本方案**不修改 App 文件**，靠后台守护进程"检测到 App 没带调试端口 → 优雅退出 → 带端口重新打开"来注入中文。
 
-1. 自动退出 Antigravity
-2. 给 App 打启动补丁
-3. 自动重新打开 Antigravity（此时界面为中文）
+因此安装完成、用户下一次用原图标打开 Antigravity 时：
 
-**因此：**
-- 此时 App 自动关闭再打开是**正常现象**，不要当成崩溃
-- **不要**重复执行安装脚本
-- **不要**手动去杀进程或重启
-- 你可以告诉用户："App 会自己关闭并重开一次，约 10 秒，之后就是中文"
+- App 会在 **3~10 秒内自己关闭并重开一次**——这是**正常现象**，不是崩溃；
+- **不要**重复执行安装脚本，**不要**手动去杀进程或重启；
+- 重开后界面即为中文。
 
-如果用户是在 **Antigravity 内部**让你安装的，这条尤其重要——脚本必须靠脱壳才能完成，
-因为它自己就是 App 的子进程。
+**你必须在安装完成后明确告诉用户：**"以后每次打开 Antigravity，它会自己重启一次（约 3~10 秒），之后就是中文，这是正常的。"
+
+如果用户是在 **Antigravity 内部**让你安装的，这条尤其重要：你就是 App 的子进程，App 重启时你这条对话会被打断，属正常现象。请在你**执行安装前**就先提醒用户"安装过程中 Antigravity 会自己重启一次，不要担心"。
 
 ---
 
 ## 5. 验证（可选但推荐）
 
 ```bash
-node mac/patch/patch-asar.js --check     # 期望输出：patched
 launchctl list | grep zhpatch            # 有输出 = 后台服务已注册
 ```
 
@@ -96,7 +91,7 @@ launchctl list | grep zhpatch            # 有输出 = 后台服务已注册
 ## 6. 约束（不要做）
 
 - ❌ 不要用 `sudo`
-- ❌ 不要修改 `/Applications/Antigravity.app` 里的其它文件
+- ❌ 不要修改 `/Applications/Antigravity.app` 里的任何文件（本方案从不修改 App，保持其签名完好）
 - ❌ 不要 `pip install` / `npm install` 任何依赖（本项目零依赖，只需系统自带 Node.js 22+）
 - ❌ 不要联网下载其它脚本
 - ❌ 不要尝试安装到 Windows / Linux
@@ -120,7 +115,7 @@ cd ~/AntiGravity-2.0-zh
 ./mac/update.sh
 ```
 
-它等价于 `git pull` + 重新安装（刷新后台服务、校验补丁）。
+它等价于 `git pull` + 重新安装（刷新后台服务）。
 
 - 若返回"已是最新版本"，说明作者还没发布新版
 - 若不是 git 仓库（用户下载的 zip），会提示重新下载
@@ -132,4 +127,4 @@ cd ~/AntiGravity-2.0-zh
 ./mac/uninstall.sh
 ```
 
-会：停止后台服务、移除开机自启、**把 App 还原成原始文件**（补丁完全移除）。
+会：停止后台服务、移除开机自启。App 文件不受影响（本方案从不修改 App；若用户以前装过旧版打过补丁，会自动一并还原成原厂）。

@@ -6,13 +6,13 @@
 > 仅针对 **Antigravity 桌面主程序**（`Antigravity.app`，即 Agent / Hub 版）。
 > **不适用**于 Antigravity IDE（VS Code 版）——那个请安装官方中文语言包。
 
-社区维护的非官方汉化工具。装好后**用原来的 Antigravity 图标打开就是中文**：不闪退、不需要重启、不需要额外的启动器。
+社区维护的非官方汉化工具。装好后**用原来的 Antigravity 图标打开就是中文**：全程**不修改 App 文件**、签名完好，不会出现"打不开 / 已损坏"。打开后 App 会自动重启一次并注入中文（约 3~10 秒）。
 
 ## 它是怎么做到的
 
-1. **打一个极小补丁**：在 App 的 `app.asar` 里注入一行，让 Antigravity 启动时自己打开一个**仅本机**（`127.0.0.1`）的调试端口；同时同步更新 `Info.plist` 里的 asar 完整性哈希（否则 Electron 会拒绝启动）。
-2. **后台服务注入中文**：一个开机自启的 LaunchAgent 常驻，通过该调试端口把中文词表注入界面；界面变化时持续生效。
-3. **更新自愈**：App 自动更新会覆盖补丁，后台服务会检测到并**自动重打**。
+1. **不修改 App 文件**：`app.asar` / `Info.plist` 一律不动，App 保持 Google 原签名，结构上彻底消除"打不开"这类问题。
+2. **自愈启动**：一个开机自启的 LaunchAgent 常驻，检测到你用原图标打开 App、但 App 没带调试端口时，会优雅退出并带 `--remote-debugging-port` 重新打开（所以冷启动会看到 App 自动重开一次，属正常现象）。
+3. **注入中文**：守护进程通过该本机调试端口把中文词表注入界面，界面变化时持续生效。
 
 ## 安装完成后你会看到
 
@@ -27,7 +27,7 @@
 | 安装汉化 | `./mac/install.sh` | `一键汉化.command` |
 | 更新汉化 | `./mac/update.sh` | `一键更新.command` |
 | 还原 / 卸载 | `./mac/uninstall.sh` | `一键卸载.command` |
-| 检查补丁状态 | `node mac/patch/patch-asar.js --check` | — |
+| 检查服务状态 | `launchctl list \| grep zhpatch` | — |
 
 ## 目录结构
 
@@ -35,19 +35,19 @@
 antigravity-zh/
 ├── 一键汉化.command          # 双击安装
 ├── 一键更新.command          # 双击更新到最新版
-├── 一键卸载.command          # 双击卸载（会还原 App）
+├── 一键卸载.command          # 双击卸载（停服务，不碰 App）
 ├── README.md
 ├── LICENSE
 └── mac/
-    ├── install.sh            # 环境检查 + 注册 LaunchAgent + 打补丁
+    ├── install.sh            # 环境检查 + 注册 LaunchAgent（老用户自动还原原厂）
     ├── update.sh             # git pull + 重新安装
-    ├── uninstall.sh          # 停服务 + 还原 App
+    ├── uninstall.sh          # 停服务 + 移除自启（老用户自动还原原厂）
     ├── launchagents/
     │   └── com.a1412.antigravity.zhpatch.plist
     ├── patch/
-    │   └── patch-asar.js     # 打/查/还原启动补丁（含完整性哈希处理）
+    │   └── patch-asar.js     # 仅用于还原旧版打过的补丁（迁移遗留）
     ├── bin/
-    │   └── antigravity-zh-patch.js   # 注入脚本 + 中文词表
+    │   └── antigravity-zh-patch.js   # 自愈守护 + 注入脚本 + 中文词表
     └── logs/
 ```
 
@@ -65,8 +65,8 @@ antigravity-zh/
 2. 双击 **`一键汉化.command`**
    - 若提示「无法打开，因为来自身份不明的开发者」：**右键 → 打开**
    - 若提示没有执行权限：终端执行 `chmod +x 一键汉化.command`
-3. 安装过程中若 Antigravity 正开着，会**自动退出并重新打开一次**（仅这一次）
-4. 之后**用原来的图标打开就是中文**
+3. 若 Antigravity 正开着且是旧版（打过补丁），安装时会自动退出 → 还原原厂 → 重新打开（仅这一次）
+4. 之后**用原来的图标打开就是中文**（每次冷启动会看到 App 自动重开一次，属正常自愈）
 
 命令行方式：
 
@@ -93,7 +93,13 @@ git clone https://github.com/sptang2026/AntiGravity-2.0-zh.git \
 
 > ⚠️ **clone / 下载本身不会执行任何东西**。必须显式运行安装脚本才会生效——这是安全设计，不是缺陷。
 
-> 💡 **在 Antigravity 里面安装也没问题**：脚本会先把自己"脱壳"到独立进程，再由它退出 App → 打补丁 → 自动重新打开。你会看到 App 自己关掉又重开一次（约 10 秒），属正常现象。
+### 如果是在 Antigravity 里让它自己的 Agent 装（重点）
+
+发完上面那句安装指令后，**一定要再补一句提醒**：
+
+> 注意：安装过程中 Antigravity 会自己退出并重新打开一次，这是正常的，不要中断。
+
+原因：汉化靠守护进程"检测到没带调试端口 → 自动重启 App"来注入，而 Agent 就是 App 的子进程——App 一重启，这条对话会被打断，属正常现象；重开后界面就是中文。**提前说清"会重启"，才不会让对方误以为装坏了。**
 
 ## 更新（作者发布新版后）
 
@@ -112,7 +118,7 @@ cd /你克隆的目录/AntiGravity-2.0-zh   # 换成你自己的路径
 
 ## 卸载
 
-双击 **`一键卸载.command`**。它会：停止后台服务、移除开机自启、**把 App 还原成原始文件**（补丁完全移除）。
+双击 **`一键卸载.command`**。它会：停止后台服务、移除开机自启。App 文件不受影响（本方案从不修改 App；若你以前用过旧版打过补丁，会自动一并还原成原厂）。
 
 ```bash
 ./mac/uninstall.sh
@@ -122,10 +128,10 @@ cd /你克隆的目录/AntiGravity-2.0-zh   # 换成你自己的路径
 
 | 现象 | 处理 |
 |---|---|
-| 打开后是英文 | 多半是 App 刚自动更新、补丁被覆盖。**退出 Antigravity，等 10~20 秒**（服务会自动重打补丁），再打开即可 |
-| 打开后仍是英文（持续） | 检查 `node mac/patch/patch-asar.js --check` 是否输出 `patched`；再看 `mac/logs/zhpatch.err.log` |
+| 打开后是英文 | 打开后 App 会自动重开一次（约 3~10 秒）才变中文；若已超过 10 秒仍英文，看下一条 |
+| 打开后仍是英文（持续） | 检查 `launchctl list \| grep zhpatch` 是否有输出；再看 `mac/logs/zhpatch.err.log` 有没有"检测到未带调试端口" |
 | 提示 Node 版本过低 | 升级到 Node.js 22+ |
-| App 打不开 / 提示已损坏 | 运行 `./mac/uninstall.sh` 还原，或 `node mac/patch/patch-asar.js --restore` |
+| 打开时闪了一下 | 属正常：守护进程把 App 带调试端口重启了一次 |
 | 部分文字仍是英文 | 界面更新较快，词表可能未覆盖；欢迎提 Issue |
 
 > 说明：以下内容**保持英文**，不是漏翻——产品/模型/套餐名（Antigravity、Gemini 4 Neon、Google AI Pro/Ultra）、技术名词（Token、MCP、URL）、skill 名称、项目/对话/分支名、下拉框里的官方默认值（Default Light、System default 等），以及**开屏问候语**。
@@ -133,7 +139,7 @@ cd /你克隆的目录/AntiGravity-2.0-zh   # 换成你自己的路径
 ## 安全说明
 
 - 调试端口**只绑定 `127.0.0.1`**，不对外网开放；但本机任意进程理论上都能连它。
-- 本工具会**修改 App 本体**（`app.asar` + `Info.plist`），这会使 App 的代码签名失效。这是"原图标打开即中文、零闪退"的唯一办法。所有原始文件在安装时已备份到 `~/Library/Application Support/AntigravityZh/backup/`，可一键还原。
+- 本工具**不修改 App 本体**（`app.asar` / `Info.plist` 均不动），App 代码签名保持有效，这是与旧版最大的区别。
 - 非官方项目，与 Google 无关；请自行评估风险。
 
 ## 署名

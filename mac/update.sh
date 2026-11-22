@@ -40,7 +40,7 @@ else
   say "✅ 代码已更新到 $(cat VERSION 2>/dev/null || echo '最新版本')"
 fi
 
-say "→ 重新安装（刷新后台服务 + 校验启动补丁）…"
+say "→ 重新安装（刷新后台服务）…"
 "$ROOT/install.sh"
 
 say ""

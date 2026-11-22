@@ -1,9 +1,9 @@
 #!/bin/bash
-# delayed-apply.sh — 在 Antigravity 退出后打补丁，并重新打开 App
+# delayed-apply.sh — 在 Antigravity 退出后把 App 还原成原厂文件，并重新打开
 #
-# 用途：当用户在 Antigravity 内部（通过它的 Agent）执行安装时，安装脚本本身
-# 是 App 的子进程，退出 App 会把脚本一起杀掉。所以把"打补丁 + 重开"交给这个
-# 独立进程（nohup 脱壳），它不受 App 退出影响。
+# 用途：迁移旧版本（改文件方案）时，若 App 正在运行，退出 App 会把调用方脚本一起杀掉
+# （当安装在 Antigravity 内部执行时）。所以把"退出→还原→重开"交给这个独立进程脱壳执行。
+# 自愈方案不再修改 App 文件，此脚本只用于把已打补丁的 App 还原成原厂。
 #
 # 参数：<node 路径> <patch-asar.js 路径> <App 路径> <日志文件>
 
@@ -29,15 +29,16 @@ for _round in 1 2 3 4 5; do
 done
 
 if /usr/bin/pgrep -f "$PGREP_PAT" >/dev/null 2>&1; then
-  echo "[delayed-apply] $(date) App 未能退出，放弃打补丁" >> "$LOG"
+  echo "[delayed-apply] $(date) App 未能退出，放弃还原" >> "$LOG"
   exit 1
 fi
 
-echo "[delayed-apply] $(date) App 已退出，开始打补丁" >> "$LOG"
-"$NODE_BIN" "$PATCHER" --apply >> "$LOG" 2>&1
+echo "[delayed-apply] $(date) App 已退出，开始还原成原厂文件" >> "$LOG"
+AG_APP_PATH="$APP" "$NODE_BIN" "$PATCHER" --restore >> "$LOG" 2>&1
 RC=$?
-echo "[delayed-apply] $(date) 打补丁退出码=$RC" >> "$LOG"
+echo "[delayed-apply] $(date) 还原退出码=$RC" >> "$LOG"
 
+# 还原后重新打开 App（守护进程会检测到没带调试端口，自愈重启并注入中文）
 /usr/bin/open -a "$APP" >/dev/null 2>&1 || true
 echo "[delayed-apply] $(date) 已重新打开 App" >> "$LOG"
 exit $RC
