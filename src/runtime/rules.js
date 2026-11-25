@@ -98,11 +98,33 @@ const LIMIT_MAP = {
 
 const EFFORT_MAP = {
   'Extra High': '超高',
+  XHigh: '超高',
   High: '高',
   Medium: '中',
   Low: '低',
   Thinking: '思考',
 };
+
+const MONTH_MAP = {
+  jan: '1', january: '1',
+  feb: '2', february: '2',
+  mar: '3', march: '3',
+  apr: '4', april: '4',
+  may: '5',
+  jun: '6', june: '6',
+  jul: '7', july: '7',
+  aug: '8', august: '8',
+  sep: '9', sept: '9', september: '9',
+  oct: '10', october: '10',
+  nov: '11', november: '11',
+  dec: '12', december: '12',
+};
+
+function formatEnDate(monthStr, dayStr, yearStr = '') {
+  const mon = MONTH_MAP[String(monthStr || '').toLowerCase()];
+  if (!mon) return `${monthStr} ${dayStr}${yearStr ? `, ${yearStr}` : ''}`;
+  return yearStr ? `${yearStr} 年 ${mon} 月 ${dayStr} 日` : `${mon} 月 ${dayStr} 日`;
+}
 
 export function translateToolGroupSummary(valNorm, contextEl) {
   if (/^(Editing|Edited)\s+files$/i.test(valNorm)) {
@@ -213,7 +235,7 @@ export function translateDynamic(valNorm, contextEl, options = {}) {
   }
 
   // 5. 模型、项目、分支、权限选择器及额度百分比
-  if ((m = valNorm.match(/^Select model,\s*current:\s*(.+?)(?:\s+(Extra High|High|Medium|Low|Thinking))?$/i))) {
+  if ((m = valNorm.match(/^Select model,\s*current:\s*(.+?)(?:\s+(Extra High|XHigh|High|Medium|Low|Thinking))?$/i))) {
     const model = m[1].trim();
     const effRaw = m[2] || '';
     const eff = effRaw ? ` ${keepEnglishLabels ? effRaw : EFFORT_MAP[effRaw] || effRaw}` : '';
@@ -240,9 +262,33 @@ export function translateDynamic(valNorm, contextEl, options = {}) {
   if ((m = valNorm.match(/^(\d+(?:\.\d+)?)% used$/i))) {
     return `已用 ${m[1]}%`;
   }
-  if ((m = valNorm.match(/^(Gemini|Claude|GPT)\s+([^(]+)\s*\((Extra High|High|Medium|Low|Thinking)\)$/))) {
+  if ((m = valNorm.match(/^(Gemini|Claude|GPT)\s+([^(]+)\s*\((Extra High|XHigh|High|Medium|Low|Thinking)\)$/))) {
     const label = keepEnglishLabels ? m[3] : EFFORT_MAP[m[3]] || m[3];
     return `${m[1]} ${m[2].trim()} (${label})`;
+  }
+  // 模型动态提示（编排器分流与下线日期提醒，保留模型名称原文）
+  if (
+    (m = valNorm.match(
+      /^(.+?)\s+that may offload routine steps to\s+(.+?)\.\s+Same\s+(.+?)-level quality,\s*fewer tokens used\.?$/i
+    ))
+  ) {
+    return `以 ${m[1]} 为主，可将常规步骤分流给 ${m[2]}。保持 ${m[3]} 级质量，消耗更少 Token。`;
+  }
+  if (
+    (m = valNorm.match(
+      /^(.+?)\s+will be removed from Antigravity on\s+([A-Za-z]+)\s+(\d{1,2})(?:,\s*(\d{4}))?\.?$/i
+    ))
+  ) {
+    return `${m[1]} 将于 ${formatEnDate(m[2], m[3], m[4] || '')}从 Antigravity 下线。`;
+  }
+  if ((m = valNorm.match(/^The original (.+?) model for advanced workflows\.\s*Leaving on ([A-Za-z]+)\s+(\d{1,2})(?:,\s*(\d{4}))?\.?$/i))) {
+    return `面向进阶工作流的初代 ${m[1]} 模型。将于 ${formatEnDate(m[2], m[3], m[4] || '')}下线。`;
+  }
+  if ((m = valNorm.match(/^Use (.+?) for better quality with lower quota usage\.\s*Leaving on ([A-Za-z]+)\s+(\d{1,2})(?:,\s*(\d{4}))?\.?$/i))) {
+    return `建议改用 ${m[1]}，效果更佳且额度消耗更低。将于 ${formatEnDate(m[2], m[3], m[4] || '')}下线。`;
+  }
+  if ((m = valNorm.match(/^Leaving on ([A-Za-z]+)\s+(\d{1,2})(?:,\s*(\d{4}))?\.?$/i))) {
+    return `将于 ${formatEnDate(m[1], m[2], m[3] || '')}下线。`;
   }
 
   // 6. 额度重置与刷新提示

@@ -20,6 +20,19 @@ test('动态规则：耗时、工具摘要、额度、权限与快捷键后缀',
     '选择模型，当前：Gemini 4 Neon High'
   );
   assert.equal(translateDynamic('3 tools enabled'), '3 个工具已启用');
+  assert.equal(
+    translateDynamic('The original Gemini 4 model for advanced workflows. Leaving on Dec 15.'),
+    '面向进阶工作流的初代 Gemini 4 模型。将于 12 月 15 日下线。'
+  );
+  assert.equal(
+    translateDynamic('GPT-OSS will be removed from Antigravity on November 30, 2026.'),
+    'GPT-OSS 将于 2026 年 11 月 30 日从 Antigravity 下线。'
+  );
+  assert.equal(
+    translateDynamic('Neon that may offload routine steps to Hydrogen. Same Neon-level quality, fewer tokens used.'),
+    '以 Neon 为主，可将常规步骤分流给 Hydrogen。保持 Neon 级质量，消耗更少 Token。'
+  );
+  assert.equal(translateDynamic('Gemini 4 Neon (XHigh)'), 'Gemini 4 Neon (超高)');
 
   const shortcutRes = translateWithShortcut('Cancel (⌃C)', (k) => (k === 'Cancel' ? '取消' : null));
   assert.equal(shortcutRes, '取消 (⌃C)');
@@ -281,6 +294,16 @@ test('前端主引擎：静态/动态翻译、安全隔离、WeakMap 无损还�
   const customOverrideText = document.createTextNode('Advanced');
   customOverrideEl.appendChild(customOverrideText);
 
+  // 模型徽章里的 New 译为「新」，普通按钮里的 New 译为「新建」
+  const badgeWrap = document.createElement('div');
+  badgeWrap.setAttribute('data-tooltip-id', 'model-tag-1');
+  const badgeNewText = document.createTextNode('New');
+  badgeWrap.appendChild(badgeNewText);
+
+  const normalNewBtn = document.createElement('button');
+  const normalNewText = document.createTextNode('New');
+  normalNewBtn.appendChild(normalNewText);
+
   // 必须严格跳过的区域（代码块 & AI 回复正文）
   const codeEl = document.createElement('code');
   const codeText = document.createTextNode('Cancel');
@@ -296,7 +319,7 @@ test('前端主引擎：静态/动态翻译、安全隔离、WeakMap 无损还�
   const greetText = document.createTextNode("Good to see you, Will. What's next?");
   greetEl.appendChild(greetText);
 
-  for (const el of [btn, labelEl, customKeepEl, customOverrideEl, codeEl, aiEl, greetEl]) {
+  for (const el of [btn, labelEl, customKeepEl, customOverrideEl, badgeWrap, normalNewBtn, codeEl, aiEl, greetEl]) {
     body.appendChild(el);
   }
 
@@ -314,6 +337,8 @@ test('前端主引擎：静态/动态翻译、安全隔离、WeakMap 无损还�
   assert.equal(labelText.nodeValue, '请求审核');
   assert.equal(customKeepText.nodeValue, 'Artifacts', '自定义空译文必须强制保留英文');
   assert.equal(customOverrideText.nodeValue, '进阶配置', '自定义覆盖译文必须生效');
+  assert.equal(badgeNewText.nodeValue, '新', '模型徽章里的 New 应译为「新」');
+  assert.equal(normalNewText.nodeValue, '新建', '普通按钮里的 New 应保持「新建」');
   assert.equal(codeText.nodeValue, 'Cancel', 'code 标签内不得翻译');
   assert.equal(aiText.nodeValue, 'Settings', 'AI 回复正文不得翻译');
   assert.equal(greetText.nodeValue, "Good to see you, Will. What's next?", '开屏问候语必须保持英文');

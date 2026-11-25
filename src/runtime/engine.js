@@ -102,6 +102,9 @@
     ['高级', 'Advanced'],
     ['规划', 'Planning'],
     ['快速', 'Fast'],
+    ['即将下线', 'Leaving Soon'],
+    ['提醒', 'Notice'],
+    ['新', 'New'],
   ]);
 
   const reverseMap = new Map(PREFERRED_REVERSE);
@@ -181,6 +184,7 @@
     'auto',
     'turbo',
     'extra high',
+    'xhigh',
     'high',
     'medium',
     'low',
@@ -494,6 +498,16 @@
 
     const lead = rawValue.match(/^\s*/)?.[0] || '';
     const trail = rawValue.match(/\s*$/)?.[0] || '';
+
+    // 模型列表与菜单徽章内的 "New" 统一译为「新」，不影响普通「新建」按钮
+    if (
+      valNorm === 'New' &&
+      contextEl &&
+      (contextEl.closest?.('[data-tooltip-id], [role="menuitem"], [role="option"], [role="listbox"]') ||
+        /\brounded-full\b/.test(String(contextEl.className || '')))
+    ) {
+      return lead + '新' + trail;
+    }
 
     let translated = exactMap.get(valNorm) ?? lowerMap.get(lower);
     if (!translated) {
