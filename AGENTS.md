@@ -22,8 +22,8 @@ uname -s
 ```bash
 # 建议克隆到用户主目录下的固定位置（不要放 /tmp，重启可能被清理）
 cd ~
-git clone https://github.com/sptang2026/AntiGravity-2.0-zh.git
-cd AntiGravity-2.0-zh
+git clone https://github.com/sptang2026/AntiGravity2.0-zh.git
+cd AntiGravity2.0-zh
 ```
 
 > ⚠️ 克隆位置会被写进开机自启服务里。**不要克隆到 `/tmp` 或临时目录**，否则目录被清理后汉化服务会失效。
@@ -68,7 +68,7 @@ chmod +x mac/install.sh mac/patch/*.sh mac/patch/*.js mac/bin/antigravity-zh-pat
 
 ## 4. ⚠️ 安装后 App 会自动重启一次（重点，务必告知用户）
 
-本方案**不修改任何 App 文件**，靠后台守护进程"检测到 App 没带调试端口 → 优雅退出 → 带 `--remote-debugging-port=0` 重新打开"来建立事件驱动 CDP 连接并注入中文。
+本方案**不修改任何 App 文件**，靠后台守护进程"检测到 App 没带调试端口 → 优雅退出 → 带 `--remote-debugging-port=0` 重新打开"来建立事件驱动 CDP 连接并注入中文（macOS 不可能三角下，为同时保住原厂代码签名与不新增图标，默认保留此冷启动自愈重开机制）。
 
 因此安装完成、用户下一次用原图标打开 Antigravity 或 Antigravity IDE 时：
 
@@ -100,6 +100,10 @@ node mac/bin/antigravity-zh-patch.js --status
 ---
 
 ## 7. 词库修改与测试（开发维护时）
+
+**翻译口径硬规范（永久生效，用户截图补词时自动遵守，无需用户重复提醒）**：
+- **一律保持英文不翻译**：模型名称（如 Gemini 4 Neon / Carbon / Argon / Hydrogen、Claude Opus / Sonnet、GPT-OSS、Orchestrator 等）、产品/套餐名（Antigravity、Google AI Pro / Ultra、Swarm）、skill 名称、技术缩写（Token、MCP、URL、CLI、JSON、SSH）、开屏问候语、项目名/对话名/分支名、代码块与下拉框官方默认项。
+- 仅翻译 UI 功能性文案、按钮、提示与说明，且保持同区域语言一致（不中英混排）。
 
 修改 `src/dict/*.json`、`src/runtime/*.js` 或 `src/daemon/*.mjs` 后，依次执行：
 

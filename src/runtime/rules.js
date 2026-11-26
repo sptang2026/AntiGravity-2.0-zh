@@ -250,6 +250,10 @@ export function translateDynamic(valNorm, contextEl, options = {}) {
   if ((m = valNorm.match(/^Agent permissions preset selector,\s*current:\s*(.+)$/i))) {
     return `智能体权限预设选择器，当前：${m[1]}`;
   }
+  if ((m = valNorm.match(/^Where the agent runs,\s*current:\s*(.+)$/i))) {
+    const loc = m[1].replace(/\bThis Computer\b/g, '本机').replace(/\bRemote\b/g, '远程');
+    return `智能体运行位置，当前：${loc}`;
+  }
   if ((m = valNorm.match(/^Show ([\d,]+) breakdowns?$/i))) {
     return `显示 ${m[1]} 项明细`;
   }
@@ -306,6 +310,10 @@ export function translateDynamic(valNorm, contextEl, options = {}) {
   }
   if ((m = valNorm.match(/^Refreshes in (.+?)\.?$/i))) {
     return `${formatDuration(m[1])}后刷新`;
+  }
+  if ((m = valNorm.match(/^Resets in (.+?)\.?$/i))) {
+    // 保留 d/h/m 单位与数字原样（如 "6d 23h 后重置"）
+    return `${m[1].trim()} 后重置`;
   }
   if ((m = valNorm.match(/^Available AI Credits:\s*(\d+)$/i))) {
     return `可用 AI 额度：${m[1]}`;

@@ -105,6 +105,8 @@
     ['即将下线', 'Leaving Soon'],
     ['提醒', 'Notice'],
     ['新', 'New'],
+    ['本机', 'This Computer'],
+    ['远程', 'Remote'],
   ]);
 
   const reverseMap = new Map(PREFERRED_REVERSE);
@@ -135,6 +137,7 @@
     if ((m = zhNorm.match(/^智能体权限预设选择器，当前：(.+)$/))) return `Agent permissions preset selector, current: ${m[1]}`;
     if ((m = zhNorm.match(/^剩余\s+(\d+(?:\.\d+)?)%$/))) return `${m[1]}% left`;
     if ((m = zhNorm.match(/^已用\s+(\d+(?:\.\d+)?)%$/))) return `${m[1]}% used`;
+    if ((m = zhNorm.match(/^([<\d][\ddhms\s]*?)\s+后重置$/i))) return `Resets in ${m[1].trim()}`;
     if ((m = zhNorm.match(/^版本\s+([\d.a-zA-Z-]+)$/))) return `Version ${m[1]}`;
     if ((m = zhNorm.match(/^(\d+)\s+个工具已启用$/))) return `${m[1]} tools enabled`;
     if ((m = zhNorm.match(/^(\d+)\s+个工具$/))) return `${m[1]} tools`;
@@ -222,13 +225,14 @@
   let keepEnglishLabels = loadPref(STORAGE_KEYS.keepEnLabels) === '1';
   let originalDocLang = document.documentElement?.getAttribute('lang') ?? '';
 
-  function writeTextNode(node, nextVal) {
+  function writeTextNode(node, nextVal, isFragment = false) {
     const prev = node.nodeValue;
     const rec = originals.texts.get(node);
     if (rec && rec.zh === prev) {
       rec.zh = nextVal;
+      if (isFragment) rec.fragment = true;
     } else {
-      originals.texts.set(node, { orig: prev, zh: nextVal });
+      originals.texts.set(node, { orig: prev, zh: nextVal, fragment: isFragment });
     }
     node.nodeValue = nextVal;
   }
@@ -548,12 +552,86 @@
     }
   }
 
+  function getOriginalText(node) {
+    const cur = node.nodeValue || '';
+    const rec = originals.texts.get(node);
+    return rec && rec.zh === cur ? rec.orig : cur;
+  }
+
+  /**
+   * 协调 React 拆分为多个相邻 TextNode 的句式（避免出现 "No 自动化 yet" 类中英混排）
+   * 仅修改各 TextNode 的 nodeValue 并记入 WeakMap，不增删节点，100% 兼容 React 渲染与无损切回英文。
+   */
+  function translateFragmentChildren(element) {
+    if (!element || element.nodeType !== Node.ELEMENT_NODE) return;
+    if (element.closest?.('[data-ag-zh-ui="1"]')) return;
+    if (shouldSkipText(element)) return;
+
+    const children = element.childNodes;
+    if (!children || children.length < 3) return;
+
+    // 收集同一连续文本片段（允许跳过 React 插入的 COMMENT_NODE，遇到元素节点则分段）
+    let run = [];
+    const flushRun = () => {
+      if (run.length >= 3) {
+        // 模式 1: "No " + <noun> + " yet" -> "暂无" + <译文> + ""
+        for (let i = 0; i <= run.length - 3; i++) {
+          const t0 = run[i];
+          const t1 = run[i + 1];
+          const t2 = run[i + 2];
+          const o0 = getOriginalText(t0);
+          const o2 = getOriginalText(t2);
+          if (/^\s*No\s+$/i.test(o0) && /^\s+yet\.?\s*$/i.test(o2)) {
+            if (t0.nodeValue !== '暂无') writeTextNode(t0, '暂无', true);
+            translateTextNode(t1);
+            if (t2.nodeValue !== '') writeTextNode(t2, '', true);
+          }
+        }
+      }
+      if (run.length >= 5) {
+        // 模式 2: "No " + <noun> + " match “" + <query> + "”." -> "未找到匹配的" + <译文> + "：“" + <query> + "”。"
+        for (let i = 0; i <= run.length - 5; i++) {
+          const t0 = run[i];
+          const t1 = run[i + 1];
+          const t2 = run[i + 2];
+          const t4 = run[i + 4];
+          const o0 = getOriginalText(t0);
+          const o2 = getOriginalText(t2);
+          const o4 = getOriginalText(t4);
+          if (/^\s*No\s+$/i.test(o0) && /^\s+match\s+[“"]$/i.test(o2) && /^[”"]\.?\s*$/.test(o4)) {
+            if (t0.nodeValue !== '未找到匹配的') writeTextNode(t0, '未找到匹配的', true);
+            translateTextNode(t1);
+            if (t2.nodeValue !== '：“') writeTextNode(t2, '：“', true);
+            // 锁定用户输入的搜索词节点，防止被后续单节点遍历误翻译
+            const t3 = run[i + 3];
+            writeTextNode(t3, getOriginalText(t3), true);
+            if (t4.nodeValue !== '”。') writeTextNode(t4, '”。', true);
+          }
+        }
+      }
+      run = [];
+    };
+
+    for (const child of children) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        run.push(child);
+      } else if (child.nodeType === 8) {
+        // COMMENT_NODE（React 片段占位注释）忽略
+        continue;
+      } else {
+        flushRun();
+      }
+    }
+    flushRun();
+  }
+
   function translateTextNode(node) {
     if (shouldSkipText(node)) return;
     const cur = node.nodeValue || '';
     if (!cur.trim()) return;
 
     const rec = originals.texts.get(node);
+    if (rec && rec.fragment && rec.zh === cur) return;
     const sourceText = rec && rec.zh === cur ? rec.orig : cur;
 
     // 思考计时器中紧跟数字后的独立 "s" 节点
@@ -576,6 +654,7 @@
     if (!root || currentLang !== 'zh') return;
     if (root.nodeType === Node.TEXT_NODE) {
       translateTextNode(root);
+      if (root.parentElement) translateFragmentChildren(root.parentElement);
       return;
     }
     if (
@@ -589,6 +668,7 @@
       if (root.closest?.('[data-ag-zh-ui="1"]')) return;
       if (isEditableElement(root)) return;
       translateElement(root);
+      translateFragmentChildren(root);
       if (root.shadowRoot) translateTree(root.shadowRoot);
     }
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
@@ -597,6 +677,7 @@
         translateTextNode(node);
       } else if (node.nodeType === Node.ELEMENT_NODE) {
         translateElement(node);
+        translateFragmentChildren(node);
         if (node.shadowRoot) translateTree(node.shadowRoot);
       }
     }

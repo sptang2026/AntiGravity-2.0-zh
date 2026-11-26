@@ -33,6 +33,8 @@ test('动态规则：耗时、工具摘要、额度、权限与快捷键后缀',
     '以 Neon 为主，可将常规步骤分流给 Hydrogen。保持 Neon 级质量，消耗更少 Token。'
   );
   assert.equal(translateDynamic('Gemini 4 Neon (XHigh)'), 'Gemini 4 Neon (超高)');
+  assert.equal(translateDynamic('Resets in 6d 23h'), '6d 23h 后重置');
+  assert.equal(translateDynamic('Resets in <1m'), '<1m 后重置');
 
   const shortcutRes = translateWithShortcut('Cancel (⌃C)', (k) => (k === 'Cancel' ? '取消' : null));
   assert.equal(shortcutRes, '取消 (⌃C)');
@@ -304,6 +306,19 @@ test('前端主引擎：静态/动态翻译、安全隔离、WeakMap 无损还�
   const normalNewText = document.createTextNode('New');
   normalNewBtn.appendChild(normalNewText);
 
+  // React 多 TextNode 拆段（模拟 "No " + "automations" + " yet" 与搜索无匹配）
+  const emptyAutoP = document.createElement('p');
+  emptyAutoP.appendChild(document.createTextNode('No '));
+  emptyAutoP.appendChild(document.createTextNode('automations'));
+  emptyAutoP.appendChild(document.createTextNode(' yet'));
+
+  const noMatchP = document.createElement('p');
+  noMatchP.appendChild(document.createTextNode('No '));
+  noMatchP.appendChild(document.createTextNode('automations'));
+  noMatchP.appendChild(document.createTextNode(' match “'));
+  noMatchP.appendChild(document.createTextNode('daily'));
+  noMatchP.appendChild(document.createTextNode('”.'));
+
   // 必须严格跳过的区域（代码块 & AI 回复正文）
   const codeEl = document.createElement('code');
   const codeText = document.createTextNode('Cancel');
@@ -319,7 +334,7 @@ test('前端主引擎：静态/动态翻译、安全隔离、WeakMap 无损还�
   const greetText = document.createTextNode("Good to see you, Will. What's next?");
   greetEl.appendChild(greetText);
 
-  for (const el of [btn, labelEl, customKeepEl, customOverrideEl, badgeWrap, normalNewBtn, codeEl, aiEl, greetEl]) {
+  for (const el of [btn, labelEl, customKeepEl, customOverrideEl, badgeWrap, normalNewBtn, emptyAutoP, noMatchP, codeEl, aiEl, greetEl]) {
     body.appendChild(el);
   }
 
@@ -339,6 +354,8 @@ test('前端主引擎：静态/动态翻译、安全隔离、WeakMap 无损还�
   assert.equal(customOverrideText.nodeValue, '进阶配置', '自定义覆盖译文必须生效');
   assert.equal(badgeNewText.nodeValue, '新', '模型徽章里的 New 应译为「新」');
   assert.equal(normalNewText.nodeValue, '新建', '普通按钮里的 New 应保持「新建」');
+  assert.equal(emptyAutoP.textContent, '暂无自动化', 'React 多 TextNode 拆段必须整句全中文无混排');
+  assert.equal(noMatchP.textContent, '未找到匹配的自动化：“daily”。', '搜索无匹配拆段必须全中文且保留搜索词');
   assert.equal(codeText.nodeValue, 'Cancel', 'code 标签内不得翻译');
   assert.equal(aiText.nodeValue, 'Settings', 'AI 回复正文不得翻译');
   assert.equal(greetText.nodeValue, "Good to see you, Will. What's next?", '开屏问候语必须保持英文');
@@ -356,6 +373,8 @@ test('前端主引擎：静态/动态翻译、安全隔离、WeakMap 无损还�
   assert.equal(btnText.nodeValue, 'Cancel', '切回英文必须精准还原原文');
   assert.equal(btn.getAttribute('aria-label'), 'Archive conversation', '切回英文必须还原属性原文');
   assert.equal(labelText.nodeValue, 'React Updated Text', 'App 更新后的文本绝不能被旧原文覆写');
+  assert.equal(emptyAutoP.textContent, 'No automations yet', '切回英文时拆段节点必须无损还原');
+  assert.equal(noMatchP.textContent, 'No automations match “daily”.', '切回英文时搜索无匹配拆段必须无损还原');
   assert.equal(document.documentElement.lang, 'en');
 
   // 再切回中文

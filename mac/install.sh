@@ -148,6 +148,6 @@ say "  还原/卸载：  ./mac/uninstall.sh     （或双击「一键卸载.comm
 say "  检查服务：  launchctl list | grep zhpatch      （有输出=后台服务在运行）"
 say "────────────────────────────────────────────────"
 say ""
-say "开源仓库：https://github.com/sptang2026/AntiGravity-2.0-zh"
+say "开源仓库：https://github.com/sptang2026/AntiGravity2.0-zh"
 
 /usr/bin/osascript -e 'display notification "已生效：桌面版与 IDE 均支持事件驱动汉化，右下角可一键切换中英文。" with title "AntiGravity 中文汉化 · 安装完成"' >/dev/null 2>&1 || true
