@@ -306,6 +306,33 @@ test('前端主引擎：静态/动态翻译、安全隔离、WeakMap 无损还�
   const normalNewText = document.createTextNode('New');
   normalNewBtn.appendChild(normalNewText);
 
+  // 斜杠命令说明（验证带末尾句号容错回退 & /swarm 详情 & 句号边界）
+  const slashGoal = document.createElement('span');
+  const slashGoalText = document.createTextNode('Run until the specified goal is completely finished.');
+  slashGoal.appendChild(slashGoalText);
+
+  const customKeepDot = document.createElement('span');
+  const customKeepDotText = document.createTextNode('Artifacts.');
+  customKeepDot.appendChild(customKeepDotText);
+
+  const customPunctDot = document.createElement('span');
+  const customPunctDotText = document.createTextNode('Advanced.');
+  customPunctDot.appendChild(customPunctDotText);
+
+  const ellipsisEl = document.createElement('span');
+  const ellipsisText = document.createTextNode('Cancel...');
+  ellipsisEl.appendChild(ellipsisText);
+
+  const defaultDotEl = document.createElement('span');
+  const defaultDotText = document.createTextNode('Default.');
+  defaultDotEl.appendChild(defaultDotText);
+
+  const slashSwarm = document.createElement('p');
+  const slashSwarmText = document.createTextNode(
+    "(Preview & Quota Heavy) Run a swarm: several agents working in parallel on one task, each in its own conversation, collaborating through a shared message board. Use when the work splits into pieces that can be done at the same time, or when a second pair of eyes should check the first pair's work."
+  );
+  slashSwarm.appendChild(slashSwarmText);
+
   // React 多 TextNode 拆段（模拟 "No " + "automations" + " yet" 与搜索无匹配）
   const emptyAutoP = document.createElement('p');
   emptyAutoP.appendChild(document.createTextNode('No '));
@@ -334,14 +361,14 @@ test('前端主引擎：静态/动态翻译、安全隔离、WeakMap 无损还�
   const greetText = document.createTextNode("Good to see you, Will. What's next?");
   greetEl.appendChild(greetText);
 
-  for (const el of [btn, labelEl, customKeepEl, customOverrideEl, badgeWrap, normalNewBtn, emptyAutoP, noMatchP, codeEl, aiEl, greetEl]) {
+  for (const el of [btn, labelEl, customKeepEl, customOverrideEl, badgeWrap, normalNewBtn, slashGoal, customKeepDot, customPunctDot, ellipsisEl, defaultDotEl, slashSwarm, emptyAutoP, noMatchP, codeEl, aiEl, greetEl]) {
     body.appendChild(el);
   }
 
-  // 注入自定义词表：Artifacts 强制保留英文，Advanced 改为“进阶配置”
+  // 注入自定义词表：Artifacts 强制保留英文，Advanced 改为“进阶配置。”（同时检验句号不重复拼接）
   env.window.__agZhCustom = [
     ['artifacts', ''],
-    ['advanced', '进阶配置'],
+    ['advanced', '进阶配置。'],
   ];
 
   vm.runInNewContext(MAIN_OVERLAY, env.sandbox);
@@ -351,9 +378,15 @@ test('前端主引擎：静态/动态翻译、安全隔离、WeakMap 无损还�
   assert.equal(btn.getAttribute('aria-label'), '归档对话');
   assert.equal(labelText.nodeValue, '请求审核');
   assert.equal(customKeepText.nodeValue, 'Artifacts', '自定义空译文必须强制保留英文');
-  assert.equal(customOverrideText.nodeValue, '进阶配置', '自定义覆盖译文必须生效');
+  assert.equal(customOverrideText.nodeValue, '进阶配置。', '自定义覆盖译文必须生效');
   assert.equal(badgeNewText.nodeValue, '新', '模型徽章里的 New 应译为「新」');
   assert.equal(normalNewText.nodeValue, '新建', '普通按钮里的 New 应保持「新建」');
+  assert.equal(slashGoalText.nodeValue, '持续运行，直到指定的目标完全完成。', '末尾带句号的斜杠命令描述必须通过容错回退命中');
+  assert.equal(customKeepDotText.nodeValue, 'Artifacts.', '自定义保留英文词条带句号时仍必须保留英文');
+  assert.equal(customPunctDotText.nodeValue, '进阶配置。', '基础译文已含中文句末标点时不得拼出双句号');
+  assert.equal(ellipsisText.nodeValue, 'Cancel...', '省略号结尾不得误触发单句号容错');
+  assert.equal(defaultDotText.nodeValue, '默认。', '未开启保留英文选项时 Default. 应正常翻译');
+  assert.ok(slashSwarmText.nodeValue.startsWith('（预览功能 · 较耗额度）启动 Swarm：'), 'Swarm 斜杠命令描述必须完整翻译并保留 Swarm 原名');
   assert.equal(emptyAutoP.textContent, '暂无自动化', 'React 多 TextNode 拆段必须整句全中文无混排');
   assert.equal(noMatchP.textContent, '未找到匹配的自动化：“daily”。', '搜索无匹配拆段必须全中文且保留搜索词');
   assert.equal(codeText.nodeValue, 'Cancel', 'code 标签内不得翻译');
@@ -425,6 +458,13 @@ test('前端主引擎：静态/动态翻译、安全隔离、WeakMap 无损还�
   assert.equal(legacyProjText.nodeValue, 'Projects');
   assert.equal(legacySidebar.getAttribute('aria-label'), 'Sidebar');
   assert.equal(projectCardText.nodeValue, '项目', '项目名卡片内容绝不可被反向改写');
+
+  // 6) 验证开启「选项名保留英文」后，带末尾句号的选项名也不得被容错回退强行翻译
+  env.window.localStorage.setItem('agZhKeepEnLabels', '1');
+  env.window.localStorage.setItem('agZhLang', 'zh');
+  env.window.__agZhRequestedFingerprint = `${MAIN_FINGERPRINT}-keep-en`;
+  vm.runInNewContext(MAIN_OVERLAY, env.sandbox);
+  assert.equal(defaultDotText.nodeValue, 'Default.', '开启选项名保留英文时 Default. 必须保持英文');
 });
 
 test('Swarm 子帧引擎：非 Swarm 协议绝不注入，合法 Swarm 帧正常翻译并支持切换还原', () => {

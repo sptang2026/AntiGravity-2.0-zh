@@ -514,6 +514,14 @@
     }
 
     let translated = exactMap.get(valNorm) ?? lowerMap.get(lower);
+    // 末尾单句号容错：词库未带句号而页面带句号时自动命中并补全中文句号（避开 "..." 省略号）
+    if (!translated && valNorm.endsWith('.') && !valNorm.endsWith('...')) {
+      const noDot = valNorm.slice(0, -1).trim();
+      const baseHit = lookupStatic(noDot);
+      if (baseHit) {
+        translated = /[。！？.!?]$/.test(baseHit) ? baseHit : `${baseHit}。`;
+      }
+    }
     if (!translated) {
       translated = translateWithShortcut(valNorm, lookupStatic);
     }
